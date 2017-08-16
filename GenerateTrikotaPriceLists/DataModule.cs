@@ -13,7 +13,7 @@ namespace GenerateTrikotaPriceLists
     {
         public static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public class ProductGroup
+        public class ProductGroup: ICloneable
         {
             public string code { get; set; }
             public string description { get; set; }
@@ -37,6 +37,11 @@ namespace GenerateTrikotaPriceLists
                 description = (string)row["description"];
                 iLevel = (int)row["iLevel"];
                 sLevel = (string)row["slevel"];
+            }
+
+            public object Clone()
+            {
+                return this.MemberwiseClone();
             }
         }
 
@@ -65,7 +70,7 @@ namespace GenerateTrikotaPriceLists
             }
         }
 
-        public class Product
+        public class Product : ICloneable
         {
             public static int fieldsCount = 8;
 
@@ -78,6 +83,7 @@ namespace GenerateTrikotaPriceLists
             public string quantity { get; set; }
             public string level { get; set; }
             public decimal price { get; set; }
+            public string comment { get; set; }
             public List<ProductGroup> groups;
 
             public Product() { }
@@ -89,27 +95,49 @@ namespace GenerateTrikotaPriceLists
                     Regex regex = new Regex(@"(S:)(.*)");
                     MatchCollection matches = regex.Matches(indexedTableValue);
 
-                    code = matches[0].Groups[2].Value.Trim();
-                    article = matches[1].Groups[2].Value.Trim();
-                    description = matches[2].Groups[2].Value.Trim();
-                    unit = matches[3].Groups[2].Value.Trim();
-                    pack = matches[4].Groups[2].Value.Trim();
-                    characteristicDescription = matches[5].Groups[2].Value.Trim();
-                    quantity = matches[6].Groups[2].Value.Trim();
+                    int index = 0;
+
+                    code = matches[index++].Groups[2].Value.Trim();
+                    article = matches[index++].Groups[2].Value.Trim();
+                    description = matches[index++].Groups[2].Value.Trim();
+                    unit = matches[index++].Groups[2].Value.Trim();
+                    pack = matches[index++].Groups[2].Value.Trim();
+                    characteristicDescription = matches[index++].Groups[2].Value.Trim();
+                    quantity = matches[index++].Groups[2].Value.Trim();
 
                     level = "";
                     price = 0;
 
                     groups = new List<ProductGroup>();
-                    foreach (var group in matches[7].Groups[2].Value.Trim().Split(';'))
+                    foreach (var group in matches[index++].Groups[2].Value.Trim().Split(';'))
                     {
                         groups.Add(new ProductGroup(group));
                     }
+
+                    comment = matches[index++].Groups[2].Value.Trim().Replace("\\n", "\n"); ;
                 }
                 catch (Exception exception)
                 {
                     throw new Exception($"Некорректный файл с остатками номенклатуры:\n{exception.Message}");
                 }
+            }
+
+            public object Clone()
+            {
+                return new Product()
+                {
+                    code = this.code,
+                    article = this.article,
+                    description = this.description,
+                    unit = this.unit,
+                    pack = this.pack,
+                    characteristicDescription = this.characteristicDescription,
+                    quantity = this.quantity,
+                    level = this.level,
+                    price = this.price,
+                    comment = this.comment,
+                    groups = this.groups.Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>()
+                };
             }
         }
 
@@ -227,7 +255,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void LoadConstants(string path)
         {
-            logger.Info("Загрузка констант...");
+            logger.Trace("Загрузка констант...");
 
             constants = new Dictionary<string, string>();
 
@@ -250,7 +278,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void LoadProductMatrix(string path)
         {
-            logger.Info("Загрузка товарной матрицы...");
+            logger.Trace("Загрузка товарной матрицы...");
 
             productMatrix = new List<ProductMatrixElement>();
 
@@ -269,7 +297,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void LoadProducts(string path)
         {
-            logger.Info("Загрузка остатков номенклатуры...");
+            logger.Trace("Загрузка остатков номенклатуры...");
 
             products = new List<Product>();
 
@@ -288,7 +316,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void LoadProductPrices(string path)
         {
-            logger.Info("Загрузка цен номенклатуры...");
+            logger.Trace("Загрузка цен номенклатуры...");
 
             productPrices = new Dictionary<string, Dictionary<string, decimal>>();
 
@@ -317,7 +345,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void LoadClients(string path)
         {
-            logger.Info("Загрузка списка контрагентов...");
+            logger.Trace("Загрузка списка контрагентов...");
 
             clients = new List<Client>();
 
@@ -385,7 +413,7 @@ namespace GenerateTrikotaPriceLists
 
         public static void FillProductGroups()
         {
-            logger.Info("Подготовка данных...");
+            logger.Trace("Подготовка данных...");
 
             DataTable table = new DataTable();
             table.Columns.Add("code");
@@ -416,45 +444,64 @@ namespace GenerateTrikotaPriceLists
         {
             foreach (Client client in clients)
             {
-                logger.Info($"Подготовка данных для {client.clientDescription}...");
+                logger.Trace($"Подготовка данных для {client.clientDescription}...");
 
-                List<Product> clientProducts = products.Select(s => s).ToList<Product>();
-                List<ProductGroup> clientProductGroups;
+                List<Product> clientProductsXml, clientProductsExcel;
+                List<ProductGroup> clientProductGroupsXml, clientProductGroupsExcel;
 
-                if (client.groupDepth == 0)
-                {
-                    clientProductGroups = new List<ProductGroup>();
-                    clientProducts.All(p => { p.level = "0"; p.price = GetPrice(client, p); return true; });
-                } else
-                {
-                    clientProductGroups = productGroups.Where(w => w.iLevel <= client.groupDepth).ToList<ProductGroup>();
-                    clientProducts.All(p => { p.level = String.Join(".", p.level.Split('.').Take(client.groupDepth)); p.price = GetPrice(client, p); return true; });
-                }
-
-                if (client.isExportBySpecialConditionsProducts)
-                    clientProducts = clientProducts.Where(p => CheckProductForSpecialConditions(client, p)).ToList<Product>();
-
-                if (client.isExportByProductMatrix)
-                {
-                    List<ProductMatrixElement> clientMatrix = productMatrix
-                        .Where(w => 
-                            w.companyCode == client.companyCodeForMatrixFilter &&
-                            w.storehouseCode == client.storehouseCodeForMatrixFilter)
-                         .ToList<ProductMatrixElement>();
-                    clientProducts = clientProducts.Where(p => clientMatrix.Where(w => w.productCode == p.code).Count() > 0).ToList<Product>();
-                }
-
-                if (client.isExportBySpecialConditionsProducts || client.isExportByProductMatrix)
-                { 
-                    var groupCodes = clientProducts.SelectMany(s => s.groups).Select(s => s.code).Distinct();
-                    clientProductGroups = clientProductGroups.Where(g => groupCodes.Contains(g.code)).ToList<ProductGroup>();
-                }
-                
                 if (client.isExportToXML)
-                    ExportToXML.DoExportToXML(client, clientProductGroups, clientProducts);
+                {
+                    clientProductsXml = products.Select(s => (Product)s.Clone()).ToList<Product>();
+                    if (client.groupDepth == 0)
+                    {
+                        clientProductGroupsXml = new List<ProductGroup>();
+                        clientProductsXml.All(p => { p.level = "0"; p.price = GetPrice(client, p); return true; });
+                    }
+                    else
+                    {
+                        clientProductGroupsXml = productGroups.Where(w => w.iLevel <= client.groupDepth).Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
+                        clientProductsXml.All(p => { p.level = String.Join(".", p.level.Split('.').Take(client.groupDepth)); p.price = GetPrice(client, p); return true; });
+                    }
 
+                    FilterProductsBySpecialConditions(client, ref clientProductsXml, ref clientProductGroupsXml);
+
+                    ExportToXML.DoExportToXML(client, clientProductGroupsXml, clientProductsXml);
+                }
+
+                // Подразумевается, что при выгрузке в Excel не фильтруем по вложенности,
+                // и отсутствует номенклатура, не входящая в какую-либо группу
                 if (client.isExportToEXCEL)
-                    ExportToExcel.DoExportToExcel(client, clientProducts, ExportToExcel.GetPreparedTable(clientProductGroups));
+                {
+                    clientProductsExcel = products.Select(s => (Product)s.Clone()).ToList<Product>();
+                    clientProductsExcel.All(p => { p.price = GetPrice(client, p); return true; });
+                    clientProductGroupsExcel = productGroups.Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
+
+                    FilterProductsBySpecialConditions(client, ref clientProductsExcel, ref clientProductGroupsExcel);
+
+                    ExportToExcel.DoExportToExcel(client, clientProductsExcel, ExportToExcel.GetPreparedTable(clientProductGroupsExcel));
+                }
+            }
+        }
+
+        public static void FilterProductsBySpecialConditions(Client client, ref List<Product> clientProducts, ref List<ProductGroup> clientProductGroups)
+        {
+            if (client.isExportBySpecialConditionsProducts)
+                clientProducts = clientProducts.Where(p => CheckProductForSpecialConditions(client, p)).ToList<Product>();
+
+            if (client.isExportByProductMatrix)
+            {
+                List<ProductMatrixElement> clientMatrix = productMatrix
+                    .Where(w =>
+                        w.companyCode == client.companyCodeForMatrixFilter &&
+                        w.storehouseCode == client.storehouseCodeForMatrixFilter)
+                     .ToList<ProductMatrixElement>();
+                clientProducts = clientProducts.Where(p => clientMatrix.Where(w => w.productCode == p.code).Count() > 0).ToList<Product>();
+            }
+
+            if (client.isExportBySpecialConditionsProducts || client.isExportByProductMatrix)
+            {
+                var groupCodes = clientProducts.SelectMany(s => s.groups).Select(s => s.code).Distinct();
+                clientProductGroups = clientProductGroups.Where(g => groupCodes.Contains(g.code)).ToList<ProductGroup>();
             }
         }
 

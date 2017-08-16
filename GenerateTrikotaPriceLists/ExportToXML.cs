@@ -12,7 +12,7 @@ namespace GenerateTrikotaPriceLists
     {
         public static void DoExportToXML(Client client, List<ProductGroup> clientProductGroups, List<Product> clientProducts)
         {
-            logger.Info($"Выгрузка прайс-листа в xml для {client.clientDescription}...");
+            logger.Info($"Выгрузка прайс-листа в Xml для {client.clientDescription}...");
 
             StringBuilder fileName = new StringBuilder();
             fileName.Append(GetConstant("pricelist-filename"));
@@ -34,7 +34,7 @@ namespace GenerateTrikotaPriceLists
 
                     writer.WriteStartElement("PRICE-LIST");
                     writer.WriteAttributeString("company", GetConstant("company-name"));
-                    writer.WriteAttributeString("e-mail", GetConstant("e-mail"));
+                    writer.WriteAttributeString("e-mail", GetConstant("company-e-mail"));
                     writer.WriteAttributeString("date", DateTime.Now.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture));
                     writer.WriteAttributeString("client_code", client.clientCode + (client.isExportByContract ? $"@{client.contractCode}" : ""));
                     writer.WriteAttributeString("client_description", client.clientDescription);
