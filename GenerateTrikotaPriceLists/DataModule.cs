@@ -342,19 +342,19 @@ namespace GenerateTrikotaPriceLists
             DataRow row = table.Select($"code = '{groups[0].code}'").FirstOrDefault();
             if (row == null)
             {
-                DataTable childTable = new DataTable();
-                childTable.Columns.Add("code");
-                childTable.Columns.Add("description");
-                childTable.Columns.Add("iLevel", Type.GetType("System.Int32"));
-                childTable.Columns.Add("sLevel");
-                childTable.Columns.Add("children", childTable.GetType());
+                DataTable childrenTable = new DataTable();
+                childrenTable.Columns.Add("code");
+                childrenTable.Columns.Add("description");
+                childrenTable.Columns.Add("iLevel", Type.GetType("System.Int32"));
+                childrenTable.Columns.Add("sLevel");
+                childrenTable.Columns.Add("children", childrenTable.GetType());
 
                 row = table.NewRow();
                 row["code"] = groups[0].code;
                 row["description"] = groups[0].description;
                 row["iLevel"] = groups[0].iLevel;
                 row["sLevel"] = "";
-                row["children"] = childTable;
+                row["children"] = childrenTable;
 
                 table.Rows.Add(row);
             }
@@ -454,7 +454,7 @@ namespace GenerateTrikotaPriceLists
                     ExportToXML.DoExportToXML(client, clientProductGroups, clientProducts);
 
                 if (client.isExportToEXCEL)
-                    ExportToExcel.DoExportToExcel(client, ExportToExcel.GetPreparedTable(clientProductGroups, clientProducts));
+                    ExportToExcel.DoExportToExcel(client, clientProducts, ExportToExcel.GetPreparedTable(clientProductGroups));
             }
         }
 
