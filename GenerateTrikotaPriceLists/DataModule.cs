@@ -222,6 +222,9 @@ namespace GenerateTrikotaPriceLists
                     specialConditions = new List<ContractSpecialCondition>();
                     foreach (var condition in matches[index++].Groups[2].Value.Trim().Split(';'))
                     {
+                        if (String.IsNullOrWhiteSpace(condition))
+                            continue;
+
                         specialConditions.Add(new ContractSpecialCondition(condition));
                     }
                 }
