@@ -29,14 +29,14 @@ namespace GenerateTrikotaPriceLists
                 fileName.Append($"{client.clientDescription}_{client.contractCode}".Replace(' ', '_'));
             fileName.Append(".xls");
 
-            string filePath = Path.Combine(client.exportPath, RemovePathInvalidChars(fileName.ToString(), "_"));
+            string filePath = Path.Combine(StrToBoolDef(GetConstant("use-current-directory"), false) ? Environment.CurrentDirectory : client.exportPath, RemovePathInvalidChars(fileName.ToString(), "_"));
 
             using (ExcelEngine excelEngine = new ExcelEngine())
             {
                 IApplication excelApplication = excelEngine.Excel;
                 excelApplication.DefaultVersion = ExcelVersion.Excel97to2003;
 
-                workbook = excelApplication.Workbooks.Create(new string[] { "price-list" });
+                workbook = excelApplication.Workbooks.Create(new string[] { "Прайс-лист" });
                 worksheet = workbook.Worksheets[0];
 
                 columnsCount = 6;
@@ -65,23 +65,19 @@ namespace GenerateTrikotaPriceLists
 
                 if (!String.IsNullOrWhiteSpace(GetConstant("global-comment")))
                 {
-                    AddTextToExcelCell(GetConstant("global-comment"), rowNumber, 1, rowNumber, columnsCount, "Arial14BoldCenterBorders");
+                    AddTextToExcelCell(GetConstant("global-comment"), rowNumber, 1, rowNumber, columnsCount, "Arial14BoldCenterBorders", false);
                     worksheet.SetRowHeight(rowNumber, worksheet.GetRowHeight(rowNumber) / 2.5);
                     rowNumber++;
                 }
 
-                rowNumber++;
-                AddTextToExcelCell($"Прайс-лист {GetConstant("company-name")} от {DateTime.Now.ToString("dd.MM.yyyy")}", rowNumber, 1, rowNumber, columnsCount, "Arial14BoldLeft");
-                worksheet.AutofitRow(rowNumber++);
+                int firstAutoFitRow = rowNumber;
 
-                AddTextToExcelCell($"Адрес: {GetConstant("company-address")}", rowNumber, 1, rowNumber, columnsCount, "Arial10Left");
-                worksheet.AutofitRow(rowNumber++);
-                AddTextToExcelCell($"Телефоны: {GetConstant("company-phone")}", rowNumber, 1, rowNumber, columnsCount, "Arial10Left");
-                worksheet.AutofitRow(rowNumber++);
-                AddTextToExcelCell($"Сайт: {GetConstant("company-web")}", rowNumber, 1, rowNumber, columnsCount, "Arial10Left");
-                worksheet.AutofitRow(rowNumber++);
-                AddTextToExcelCell($"E-mail: {GetConstant("company-e-mail")}", rowNumber, 1, rowNumber, columnsCount, "Arial10Left");
-                worksheet.AutofitRow(rowNumber++);
+                rowNumber++;
+                AddTextToExcelCell($"Прайс-лист {GetConstant("company-name")} от {DateTime.Now.ToString("dd.MM.yyyy")}", rowNumber, 1, rowNumber++, columnsCount, "Arial14BoldLeft");
+                AddTextToExcelCell($"Адрес: {GetConstant("company-address")}", rowNumber, 1, rowNumber++, columnsCount, "Arial10Left");
+                AddTextToExcelCell($"Телефоны: {GetConstant("company-phone")}", rowNumber, 1, rowNumber++, columnsCount, "Arial10Left");
+                AddTextToExcelCell($"Сайт: {GetConstant("company-web")}", rowNumber, 1, rowNumber++, columnsCount, "Arial10Left");
+                AddTextToExcelCell($"E-mail: {GetConstant("company-e-mail")}", rowNumber, 1, rowNumber++, columnsCount, "Arial10Left");
 
                 StringBuilder sb = new StringBuilder();
                 sb.Append("Контрагент: ");
@@ -89,8 +85,7 @@ namespace GenerateTrikotaPriceLists
                     sb.Append($"[{client.clientCode}] ");
                 sb.Append(client.clientDescription);
                 rowNumber++;
-                AddTextToExcelCell(sb.ToString(), rowNumber, 1, rowNumber, columnsCount, "Arial10Left");
-                worksheet.AutofitRow(rowNumber++);
+                AddTextToExcelCell(sb.ToString(), rowNumber, 1, rowNumber++, columnsCount, "Arial10Left");
 
                 rowNumber++;
                 columnNumber = 1;
@@ -145,8 +140,7 @@ namespace GenerateTrikotaPriceLists
 
             foreach (DataRow row in table.Rows)
             {
-                AddTextToExcelCell((string)row["groupDescription"], rowNumber, 1, rowNumber, columnsCount, $"ArialGroup{Math.Min(iLevel, 4)}");
-                worksheet.AutofitRow(rowNumber++);
+                AddTextToExcelCell((string)row["groupDescription"], rowNumber, 1, rowNumber++, columnsCount, $"ArialGroup{Math.Min(iLevel, 4)}");
 
                 WriteTable((DataTable)row["children"], client, clientProducts, iLevel + 1);
 
@@ -173,13 +167,17 @@ namespace GenerateTrikotaPriceLists
             }
         }
 
-        public static void AddTextToExcelCell(string value, int row, int col, int lastRow, int lastCol, string styleName)
+        public static void AddTextToExcelCell(string value, int row, int col, int lastRow, int lastCol, string styleName, bool isAutofitMergedRow = true)
         {
             var range = worksheet.Range[row, col, lastRow, lastCol];
             range.CellStyle = workbook.Styles[styleName];
             range.Text = value;
             if (row != lastRow || col != lastCol)
+            {
                 range.Merge(false);
+                if (isAutofitMergedRow)
+                    worksheet.AutofitRow(row);
+            }
         }
 
         public static void AddExcelStyle(string name, string fontName, int fontSize, bool isFontBold,

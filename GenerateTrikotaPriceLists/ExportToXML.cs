@@ -20,7 +20,7 @@ namespace GenerateTrikotaPriceLists
                 fileName.Append($"{client.clientDescription}_{client.contractCode}".Replace(' ', '_'));
             fileName.Append(".xml");
 
-            string filePath = Path.Combine(client.exportPath, RemovePathInvalidChars(fileName.ToString(), "_"));
+            string filePath = Path.Combine(StrToBoolDef(GetConstant("use-current-directory"), false) ? Environment.CurrentDirectory : client.exportPath, RemovePathInvalidChars(fileName.ToString(), "_"));
 
             try
             {

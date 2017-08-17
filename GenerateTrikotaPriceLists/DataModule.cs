@@ -22,12 +22,12 @@ namespace GenerateTrikotaPriceLists
 
             public ProductGroup() { }
 
-            public ProductGroup(string separatedValues)
+            public ProductGroup(string groups)
             {
-                var lines = separatedValues.Split('|');
-                code = lines[0];
-                description = lines[1];
-                iLevel = StrToIntDef(lines[2], 1);
+                var values = groups.Split('|');
+                code = values[0];
+                description = values[1];
+                iLevel = StrToIntDef(values[2], 1);
                 sLevel = "";
             }
 
@@ -52,16 +52,15 @@ namespace GenerateTrikotaPriceLists
             public string productCode { get; set; }
 
             public ProductMatrixElement() { }
-            public ProductMatrixElement(string indexedTableValue)
+            public ProductMatrixElement(string line)
             {
                 try
                 {
-                    Regex regex = new Regex(@"(S:)(.*)");
-                    MatchCollection matches = regex.Matches(indexedTableValue);
+                    string[] values = line.Split(';');
 
-                    companyCode = matches[0].Groups[2].Value.Trim();
-                    storehouseCode = matches[1].Groups[2].Value.Trim();
-                    productCode= matches[2].Groups[2].Value.Trim();
+                    companyCode = values[0];
+                    storehouseCode = values[1];
+                    productCode = values[2];
                 }
                 catch (Exception exception)
                 {
@@ -88,33 +87,31 @@ namespace GenerateTrikotaPriceLists
 
             public Product() { }
 
-            public Product(string indexedTableValue)
+            public Product(string line)
             {
                 try
                 {
-                    Regex regex = new Regex(@"(S:)(.*)");
-                    MatchCollection matches = regex.Matches(indexedTableValue);
+                    string[] values = line.Split(';');
 
-                    int index = 0;
-
-                    code = matches[index++].Groups[2].Value.Trim();
-                    article = matches[index++].Groups[2].Value.Trim();
-                    description = matches[index++].Groups[2].Value.Trim();
-                    unit = matches[index++].Groups[2].Value.Trim();
-                    pack = matches[index++].Groups[2].Value.Trim();
-                    characteristicDescription = matches[index++].Groups[2].Value.Trim();
-                    quantity = matches[index++].Groups[2].Value.Trim();
+                    int i = 0;
+                    code = values[i++];
+                    article = values[i++];
+                    description = values[i++];
+                    unit = values[i++];
+                    pack = values[i++];
+                    characteristicDescription = values[i++];
+                    quantity = values[i++];
 
                     level = "";
                     price = 0;
 
                     groups = new List<ProductGroup>();
-                    foreach (var group in matches[index++].Groups[2].Value.Trim().Split(';'))
+                    foreach (var group in values[i++].Split('#'))
                     {
                         groups.Add(new ProductGroup(group));
                     }
 
-                    comment = matches[index++].Groups[2].Value.Trim().Replace("\\n", "\n"); ;
+                    comment = values[i++].Replace("\\n", "\n"); ;
                 }
                 catch (Exception exception)
                 {
@@ -149,13 +146,13 @@ namespace GenerateTrikotaPriceLists
             public decimal discount { get; set; }
 
             public ContractSpecialCondition() { }
-            public ContractSpecialCondition(string condition)
+            public ContractSpecialCondition(string conditions)
             {
-                var lines = condition.Split('|');
-                productCode = lines[0];
-                characteristicDescription = lines[1];
-                priceTypeCode = lines[2];
-                discount = StrToDecimalDef(lines[3], 0);
+                var values = conditions.Split('|');
+                productCode = values[0];
+                characteristicDescription = values[1];
+                priceTypeCode = values[2];
+                discount = StrToDecimalDef(values[3], 0);
             }
         }
 
@@ -191,36 +188,34 @@ namespace GenerateTrikotaPriceLists
 
             public Client() {  }
 
-            public Client(string indexedTableValue)
+            public Client(string line)
             {
                 try
                 {
-                    Regex regex = new Regex(@"(S:)(.*)");
-                    MatchCollection matches = regex.Matches(indexedTableValue);
+                    string[] values = line.Split(';');
 
-                    int index = 0;
-
-                    clientCode = matches[index++].Groups[2].Value.Trim();
-                    clientDescription = matches[index++].Groups[2].Value.Trim();
-                    contractCode = matches[index++].Groups[2].Value.Trim();
-                    contractDescription = matches[index++].Groups[2].Value.Trim();
-                    contractPriceTypeCode = matches[index++].Groups[2].Value.Trim();
-                    contractDiscount = StrToDecimalDef(matches[index++].Groups[2].Value.Trim(), 0);
-                    isExportByContract = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    isExportBySpecialConditionsProducts = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    isExportByProductMatrix = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    exportPath = matches[index++].Groups[2].Value.Trim();
-                    groupDepth = StrToIntDef(matches[index++].Groups[2].Value.Trim(), 0);
-                    isExportProductArticle = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    isExportProductComment = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    isAppendClientCodeExcel = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    companyCodeForMatrixFilter = matches[index++].Groups[2].Value.Trim();
-                    storehouseCodeForMatrixFilter = matches[index++].Groups[2].Value.Trim();
-                    isExportToXML = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
-                    isExportToEXCEL = StrToBoolDef(matches[index++].Groups[2].Value.Trim(), false);
+                    int i = 0;
+                    clientCode = values[i++];
+                    clientDescription = values[i++];
+                    contractCode = values[i++];
+                    contractDescription = values[i++];
+                    contractPriceTypeCode = values[i++];
+                    contractDiscount = StrToDecimalDef(values[i++], 0);
+                    isExportByContract = StrToBoolDef(values[i++], false);
+                    isExportBySpecialConditionsProducts = StrToBoolDef(values[i++], false);
+                    isExportByProductMatrix = StrToBoolDef(values[i++], false);
+                    exportPath = values[i++];
+                    groupDepth = StrToIntDef(values[i++], 0);
+                    isExportProductArticle = StrToBoolDef(values[i++], false);
+                    isExportProductComment = StrToBoolDef(values[i++], false);
+                    isAppendClientCodeExcel = StrToBoolDef(values[i++], false);
+                    companyCodeForMatrixFilter = values[i++];
+                    storehouseCodeForMatrixFilter = values[i++];
+                    isExportToXML = StrToBoolDef(values[i++], false);
+                    isExportToEXCEL = StrToBoolDef(values[i++], false);
 
                     specialConditions = new List<ContractSpecialCondition>();
-                    foreach (var condition in matches[index++].Groups[2].Value.Trim().Split(';'))
+                    foreach (var condition in values[i++].Split('#'))
                     {
                         if (String.IsNullOrWhiteSpace(condition))
                             continue;
@@ -242,19 +237,6 @@ namespace GenerateTrikotaPriceLists
         public static List<ProductMatrixElement> productMatrix;
         public static Dictionary<string, Dictionary<string, decimal>> productPrices;
         public static List<Client> clients;
-
-        public static MatchCollection GetIndexedTableStructure(string path)
-        {
-            string text = File.ReadAllText(path, Encoding.GetEncoding(1251));
-
-            string indexedTableString = "{IndexedTable:";
-            if (!text.Substring(0, indexedTableString.Length).Equals(indexedTableString))
-                throw new Exception("Некорректный файл с остатками номенклатуры!");
-
-            Regex regex = new Regex(@"\{((.|\n)*?)\}");
-
-            return regex.Matches(text, indexedTableString.Length - 1);
-        }
 
         public static void LoadConstants(string path)
         {
@@ -287,9 +269,14 @@ namespace GenerateTrikotaPriceLists
 
             try
             {
-                foreach (Match matches in GetIndexedTableStructure(path))
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
                 {
-                    productMatrix.Add(new ProductMatrixElement(matches.Value));
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    productMatrix.Add(new ProductMatrixElement(line));
                 }
             }
             catch
@@ -306,9 +293,14 @@ namespace GenerateTrikotaPriceLists
 
             try
             {
-                foreach (Match matches in GetIndexedTableStructure(path))
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
                 {
-                    products.Add(new Product(matches.Value));
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    products.Add(new Product(line));
                 }
             }
             catch
@@ -326,18 +318,20 @@ namespace GenerateTrikotaPriceLists
             try
             {
                 string priceTypeCode, productCode;
-                foreach (Match matches in GetIndexedTableStructure(path))
-                {
-                    Regex regex = new Regex(@"(S:)(.*)");
-                    MatchCollection elementsMatches = regex.Matches(matches.Value);
 
-                    productCode = elementsMatches[0].Groups[2].Value.Trim();
-                    priceTypeCode = elementsMatches[1].Groups[2].Value.Trim();
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
+                {
+                    string[] values = line.Split(';');
+
+                    productCode = values[0];
+                    priceTypeCode = values[1];
 
                     if (!productPrices.ContainsKey(productCode))
                         productPrices[productCode] = new Dictionary<string, decimal>();
 
-                    productPrices[productCode][priceTypeCode] = StrToDecimalDef(elementsMatches[2].Groups[2].Value.Trim(), 0);
+                    productPrices[productCode][priceTypeCode] = StrToDecimalDef(values[2], 0);
                 }
             }
             catch
@@ -354,9 +348,14 @@ namespace GenerateTrikotaPriceLists
 
             try
             {
-                foreach (Match matches in GetIndexedTableStructure(path))
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
                 {
-                    clients.Add(new Client(matches.Value));
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    clients.Add(new Client(line));
                 }
             }
             catch
