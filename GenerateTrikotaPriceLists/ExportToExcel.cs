@@ -177,7 +177,7 @@ namespace GenerateTrikotaPriceLists
                 range.Merge(false);
                 if (isAutofitMergedRow)
                     worksheet.AutofitRow(row);
-            }
+            } 
         }
 
         public static void AddExcelStyle(string name, string fontName, int fontSize, bool isFontBold,
