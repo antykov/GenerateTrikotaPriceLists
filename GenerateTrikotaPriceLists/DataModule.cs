@@ -540,16 +540,16 @@ namespace GenerateTrikotaPriceLists
             if (specConditionProduct != null)
                 return GetPrice(prices, specConditionProduct.priceTypeCode, specConditionProduct.discount);
 
+            var specCondidionCharacteristic = client.specialConditions.Where(w => !String.IsNullOrWhiteSpace(w.characteristicDescription) && w.characteristicDescription == product.characteristicDescription).FirstOrDefault();
+            if (specCondidionCharacteristic != null)
+                return GetPrice(prices, specCondidionCharacteristic.priceTypeCode, specCondidionCharacteristic.discount);
+
             for (int i = product.groups.Count - 1; i >= 0; i--)
             {
                 var specConditionProductGroup = client.specialConditions.Where(w => w.productCode == product.groups[i].code).FirstOrDefault();
                 if (specConditionProductGroup != null)
                     return GetPrice(prices, specConditionProductGroup.priceTypeCode, specConditionProductGroup.discount);
             }
-
-            var specCondidionCharacteristic = client.specialConditions.Where(w => !String.IsNullOrWhiteSpace(w.characteristicDescription) && w.characteristicDescription == product.characteristicDescription).FirstOrDefault();
-            if (specCondidionCharacteristic != null)
-                return GetPrice(prices, specCondidionCharacteristic.priceTypeCode, specCondidionCharacteristic.discount);
 
             return GetPrice(prices, client.contractPriceTypeCode, client.contractDiscount); 
         }
