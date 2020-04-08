@@ -50,8 +50,9 @@ namespace GenerateTrikotaPriceLists
             public string companyCode { get; set; }
             public string storehouseCode { get; set; }
             public string productCode { get; set; }
+            public string recommendQuantity { get; set; }
 
-            public ProductMatrixElement() { }
+            public ProductMatrixElement() { recommendQuantity = ""; }
             public ProductMatrixElement(string line)
             {
                 try
@@ -61,6 +62,7 @@ namespace GenerateTrikotaPriceLists
                     companyCode = values[0];
                     storehouseCode = values[1];
                     productCode = values[2];
+                    recommendQuantity = values[3];
                 }
                 catch (Exception exception)
                 {
@@ -80,8 +82,11 @@ namespace GenerateTrikotaPriceLists
             public string pack { get; set; }
             public string characteristicDescription { get; set; }
             public string quantity { get; set; }
+            public string recommendQuantity { get; set; }
             public string level { get; set; }
             public decimal price { get; set; }
+            public string brand { get; set; }
+            public string barcode { get; set; }
             public string comment { get; set; }
             public List<ProductGroup> groups;
 
@@ -97,10 +102,13 @@ namespace GenerateTrikotaPriceLists
                     code = values[i++];
                     article = values[i++];
                     description = values[i++];
+                    brand = values[i++];
                     unit = values[i++];
+                    barcode = values[i++];
                     pack = values[i++];
                     characteristicDescription = values[i++];
                     quantity = values[i++];
+                    recommendQuantity = "";
 
                     level = "";
                     price = 0;
@@ -130,9 +138,12 @@ namespace GenerateTrikotaPriceLists
                     pack = this.pack,
                     characteristicDescription = this.characteristicDescription,
                     quantity = this.quantity,
+                    recommendQuantity = this.recommendQuantity,
                     level = this.level,
                     price = this.price,
                     comment = this.comment,
+                    brand = this.brand,
+                    barcode = this.barcode,
                     groups = this.groups.Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>()
                 };
             }
@@ -181,6 +192,7 @@ namespace GenerateTrikotaPriceLists
 
             public bool isExportToXML { get; set; }
             public bool isExportToEXCEL { get; set; }
+            public int exportToEXCELVariant { get; set; }
 
             public string exportPath { get; set; }
 
@@ -213,6 +225,7 @@ namespace GenerateTrikotaPriceLists
                     storehouseCodeForMatrixFilter = values[i++];
                     isExportToXML = StrToBoolDef(values[i++], false);
                     isExportToEXCEL = StrToBoolDef(values[i++], false);
+                    exportToEXCELVariant = StrToIntDef(values[i++], 1);
 
                     specialConditions = new List<ContractSpecialCondition>();
                     foreach (var condition in values[i++].Split('#'))
@@ -233,6 +246,7 @@ namespace GenerateTrikotaPriceLists
 
         public static Dictionary<string, string> constants;
         public static List<Product> products;
+        public static List<Product> allMatrixProducts;
         public static List<ProductGroup> productGroups = new List<ProductGroup>();
         public static List<ProductMatrixElement> productMatrix;
         public static Dictionary<string, Dictionary<string, decimal>> productPrices;
@@ -261,7 +275,7 @@ namespace GenerateTrikotaPriceLists
                 return "";
         }
 
-        public static void LoadProductMatrix(string path)
+        public static void LoadMatrix(string path)
         {
             logger.Trace("Загрузка товарной матрицы...");
 
@@ -277,6 +291,30 @@ namespace GenerateTrikotaPriceLists
                         continue;
 
                     productMatrix.Add(new ProductMatrixElement(line));
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public static void LoadAllMatrixProducts(string path)
+        {
+            logger.Trace("Загрузка номенклатуры матрицы...");
+
+            allMatrixProducts = new List<Product>();
+
+            try
+            {
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
+                {
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    allMatrixProducts.Add(new Product(line));
                 }
             }
             catch
@@ -413,7 +451,7 @@ namespace GenerateTrikotaPriceLists
             }
         }
 
-        public static void FillProductGroups()
+        public static void FillProductGroups(List<Product> products, List<ProductGroup> productGroups)
         {
             logger.Trace("Подготовка данных...");
 
@@ -454,15 +492,28 @@ namespace GenerateTrikotaPriceLists
                 if (client.isExportToXML)
                 {
                     clientProductsXml = products.Select(s => (Product)s.Clone()).ToList<Product>();
-                    if (client.groupDepth == 0)
+                    if (client.isExportByProductMatrix)
                     {
+                        foreach (Product p in allMatrixProducts)
+                        {
+                            if (clientProductsXml.Find(f => f.code == p.code) == null)
+                                clientProductsXml.Add((Product)p.Clone());
+                        }
                         clientProductGroupsXml = new List<ProductGroup>();
-                        clientProductsXml.All(p => { p.level = "0"; p.price = GetPrice(client, p); return true; });
-                    }
-                    else
-                    {
-                        clientProductGroupsXml = productGroups.Where(w => w.iLevel <= client.groupDepth).Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
+                        FillProductGroups(clientProductsXml, clientProductGroupsXml);
+                        clientProductGroupsXml = clientProductGroupsXml.Where(w => w.iLevel <= client.groupDepth).Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
                         clientProductsXml.All(p => { p.level = String.Join(".", p.level.Split('.').Take(client.groupDepth)); p.price = GetPrice(client, p); return true; });
+                    } else {
+                        if (client.groupDepth == 0)
+                        {
+                            clientProductGroupsXml = new List<ProductGroup>();
+                            clientProductsXml.All(p => { p.level = "0"; p.price = GetPrice(client, p); return true; });
+                        }
+                        else
+                        {
+                            clientProductGroupsXml = productGroups.Where(w => w.iLevel <= client.groupDepth).Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
+                            clientProductsXml.All(p => { p.level = String.Join(".", p.level.Split('.').Take(client.groupDepth)); p.price = GetPrice(client, p); return true; });
+                        }
                     }
 
                     FilterProductsBySpecialConditions(client, ref clientProductsXml, ref clientProductGroupsXml);
@@ -498,6 +549,15 @@ namespace GenerateTrikotaPriceLists
                         w.storehouseCode == client.storehouseCodeForMatrixFilter)
                      .ToList<ProductMatrixElement>();
                 clientProducts = clientProducts.Where(p => clientMatrix.Where(w => w.productCode == p.code).Count() > 0).ToList<Product>();
+                clientProducts.All(p =>
+                {
+                    ProductMatrixElement matrixElement = productMatrix
+                    .Where(w =>
+                      w.companyCode == client.companyCodeForMatrixFilter &&
+                      w.storehouseCode == client.storehouseCodeForMatrixFilter &&
+                      w.productCode == p.code).FirstOrDefault();
+                    p.recommendQuantity = matrixElement?.recommendQuantity ?? "";
+                    return true; });
             }
 
             if (client.isExportBySpecialConditionsProducts || client.isExportByProductMatrix)

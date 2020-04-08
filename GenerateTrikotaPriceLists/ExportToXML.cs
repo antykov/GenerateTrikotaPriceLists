@@ -110,7 +110,7 @@ namespace GenerateTrikotaPriceLists
 
             writer.WriteStartElement("field");
             WriteXmlValue(writer, "name", "unit");
-            WriteXmlValue(writer, "description", "Ед.измерения");
+            WriteXmlValue(writer, "description", "Ед. изм.");
             WriteXmlValue(writer, "type", "string");
             WriteXmlValue(writer, "length", "10");
             WriteXmlValue(writer, "align", "0");
@@ -149,6 +149,17 @@ namespace GenerateTrikotaPriceLists
             WriteXmlValue(writer, "align", "0");
             writer.WriteEndElement();
 
+            if (client.isExportByProductMatrix)
+            {
+                writer.WriteStartElement("field");
+                WriteXmlValue(writer, "name", "recommendQuantity");
+                WriteXmlValue(writer, "description", "Рек. количество");
+                WriteXmlValue(writer, "type", "string");
+                WriteXmlValue(writer, "length", "15");
+                WriteXmlValue(writer, "align", "1");
+                writer.WriteEndElement();
+            }
+
             writer.WriteEndElement();
         }
 
@@ -186,6 +197,8 @@ namespace GenerateTrikotaPriceLists
                 WriteXmlValue(writer, "pack_coefficient", product.pack);
                 WriteXmlValue(writer, "price", product.price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
                 WriteXmlValue(writer, "currency", "643");
+                if (client.isExportByProductMatrix)
+                    WriteXmlValue(writer, "recommendQuantity", product.recommendQuantity);
                 WriteXmlValue(writer, "level", product.level);
                 writer.WriteEndElement();
             }

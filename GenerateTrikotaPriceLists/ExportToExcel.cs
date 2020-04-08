@@ -40,12 +40,19 @@ namespace GenerateTrikotaPriceLists
                 worksheet = workbook.Worksheets[0];
 
                 columnsCount = 6;
-                if (client.isAppendClientCodeExcel)
-                    columnsCount += 2;
-                if (client.isExportProductArticle)
-                    columnsCount++;
-                if (client.isExportProductComment)
-                    columnsCount++;
+                if (client.exportToEXCELVariant == 1)
+                {
+                    if (client.isAppendClientCodeExcel)
+                        columnsCount += 2;
+                    if (client.isExportProductArticle)
+                        columnsCount++;
+                    if (client.isExportProductComment)
+                        columnsCount++;
+                } else
+                {
+                    if (client.isAppendClientCodeExcel)
+                        columnsCount++;
+                }
 
                 rowNumber = 1;
 
@@ -89,32 +96,49 @@ namespace GenerateTrikotaPriceLists
 
                 rowNumber++;
                 columnNumber = 1;
-                AddTextToExcelCell("№", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 7);
-                if (client.isAppendClientCodeExcel)
+                if (client.exportToEXCELVariant == 1)
+                {
+                    AddTextToExcelCell("№", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 7);
+                    if (client.isAppendClientCodeExcel)
+                    {
+                        AddTextToExcelCell("Код", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                        worksheet.ShowColumn(columnNumber++, false);
+                    }
+                    if (client.isExportProductArticle)
+                    {
+                        AddTextToExcelCell("Артикул", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                        worksheet.SetColumnWidth(columnNumber++, 10);
+                    }
+                    AddTextToExcelCell("Номенклатура", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 60);
+                    AddTextToExcelCell("Ед.изм.", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 7);
+                    AddTextToExcelCell("Кол-во\nв упак.", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 7);
+                    AddTextToExcelCell("Остаток", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 10);
+                    AddTextToExcelCell("Цена", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 10);
+                    if (client.isExportProductComment)
+                    {
+                        AddTextToExcelCell("Комментарий", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                        worksheet.SetColumnWidth(columnNumber++, 30);
+                    }
+                } else
                 {
                     AddTextToExcelCell("Код", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                    worksheet.ShowColumn(columnNumber++, false);
-                }
-                if (client.isExportProductArticle)
-                {
-                    AddTextToExcelCell("Артикул", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 12);
+                    AddTextToExcelCell("Бренд", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 25);
+                    AddTextToExcelCell("Наименование", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 80);
+                    AddTextToExcelCell("Остаток", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
                     worksheet.SetColumnWidth(columnNumber++, 10);
-                }
-                AddTextToExcelCell("Номенклатура", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 60);
-                AddTextToExcelCell("Ед.изм.", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 7);
-                AddTextToExcelCell("Кол-во\nв упак.", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 7);
-                AddTextToExcelCell("Остаток", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 10);
-                AddTextToExcelCell("Цена", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                worksheet.SetColumnWidth(columnNumber++, 10);
-                if (client.isExportProductComment)
-                {
-                    AddTextToExcelCell("Комментарий", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
-                    worksheet.SetColumnWidth(columnNumber++, 30);
+                    AddTextToExcelCell("Цена", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 10);
+                    AddTextToExcelCell("Штрихкод", rowNumber, columnNumber, rowNumber, columnNumber, "Arial10BoldCenterBorders");
+                    worksheet.SetColumnWidth(columnNumber++, 17);
                 }
                 if (client.isAppendClientCodeExcel)
                 {
@@ -125,7 +149,10 @@ namespace GenerateTrikotaPriceLists
                 rowNumber++;
                 priceListNumber = 1;
 
-                WriteTable(table, client, clientProducts, 1);
+                if (client.exportToEXCELVariant == 1)
+                    WriteTable_Excel_1(table, client, clientProducts, 1);
+                else
+                    WriteTable_Excel_2(table, client, clientProducts, 1);
 
                 workbook.SaveAs(filePath);
 
@@ -133,7 +160,7 @@ namespace GenerateTrikotaPriceLists
             }  
         }
 
-        public static void WriteTable(DataTable table, Client client, List<Product> clientProducts, int iLevel)
+        public static void WriteTable_Excel_1(DataTable table, Client client, List<Product> clientProducts, int iLevel)
         {
             if (table.Rows.Count == 0)
                 return;
@@ -142,7 +169,9 @@ namespace GenerateTrikotaPriceLists
             {
                 AddTextToExcelCell((string)row["groupDescription"], rowNumber, 1, rowNumber++, columnsCount, $"ArialGroup{Math.Min(iLevel, 4)}");
 
-                WriteTable((DataTable)row["children"], client, clientProducts, iLevel + 1);
+                int firstGroupingRow = rowNumber;
+
+                WriteTable_Excel_1((DataTable)row["children"], client, clientProducts, iLevel + 1);
 
                 foreach (Product product in clientProducts.Where(w => w.level == (string)row["level"]))
                 {
@@ -164,6 +193,40 @@ namespace GenerateTrikotaPriceLists
 
                     rowNumber++;
                 }
+
+                worksheet.Range[firstGroupingRow, 1, rowNumber - 1, columnsCount].Group(ExcelGroupBy.ByRows, false);
+            }
+        }
+
+        public static void WriteTable_Excel_2(DataTable table, Client client, List<Product> clientProducts, int iLevel)
+        {
+            if (table.Rows.Count == 0)
+                return;
+
+            foreach (DataRow row in table.Rows)
+            {
+                AddTextToExcelCell((string)row["groupDescription"], rowNumber, 1, rowNumber++, columnsCount, $"ArialGroup{Math.Min(iLevel, 4)}");
+
+                int firstGroupingRow = rowNumber;
+
+                WriteTable_Excel_2((DataTable)row["children"], client, clientProducts, iLevel + 1);
+                
+                foreach (Product product in clientProducts.Where(w => w.level == (string)row["level"]))
+                {
+                    columnNumber = 1;
+                    AddTextToExcelCell(product.code, rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10LeftBorders");
+                    AddTextToExcelCell(product.brand, rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10LeftBorders");
+                    AddTextToExcelCell(product.description, rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10LeftBorders");
+                    AddTextToExcelCell(product.quantity, rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10RightBorders");
+                    AddTextToExcelCell(product.price.ToString("0.00"), rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10RightBorders");
+                    AddTextToExcelCell(product.barcode, rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10LeftBorders");
+                    if (client.isAppendClientCodeExcel)
+                        AddTextToExcelCell("", rowNumber, columnNumber, rowNumber, columnNumber++, "Arial10LeftBorders");
+
+                    rowNumber++;
+                }
+
+                worksheet.Range[firstGroupingRow, 1, rowNumber - 1, columnsCount].Group(ExcelGroupBy.ByRows, false);
             }
         }
 
