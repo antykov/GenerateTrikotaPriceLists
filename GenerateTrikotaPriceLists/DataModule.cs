@@ -538,6 +538,9 @@ namespace GenerateTrikotaPriceLists
 
         public static void FilterProductsBySpecialConditions(Client client, ref List<Product> clientProducts, ref List<ProductGroup> clientProductGroups)
         {
+            if (client.isExportToEXCEL && client.exportToEXCELVariant == 2)
+                clientProducts = clientProducts.Where(p => !String.IsNullOrWhiteSpace(p.brand)).ToList<Product>();
+
             if (client.isExportBySpecialConditionsProducts)
                 clientProducts = clientProducts.Where(p => CheckProductForSpecialConditions(client, p)).ToList<Product>();
 

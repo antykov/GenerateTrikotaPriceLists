@@ -205,6 +205,9 @@ namespace GenerateTrikotaPriceLists
 
             foreach (DataRow row in table.Rows)
             {
+                if (clientProducts.Where(p => p.groups.Where(g => g.code == (string)row["groupCode"]).ToList().Count > 0).ToList().Count == 0)
+                    continue;
+
                 AddTextToExcelCell((string)row["groupDescription"], rowNumber, 1, rowNumber++, columnsCount, $"ArialGroup{Math.Min(iLevel, 4)}");
 
                 int firstGroupingRow = rowNumber;
@@ -226,7 +229,8 @@ namespace GenerateTrikotaPriceLists
                     rowNumber++;
                 }
 
-                worksheet.Range[firstGroupingRow, 1, rowNumber - 1, columnsCount].Group(ExcelGroupBy.ByRows, false);
+                if (client.groupDepth > 0 && rowNumber > firstGroupingRow)
+                    worksheet.Range[firstGroupingRow, 1, rowNumber - 1, columnsCount].Group(ExcelGroupBy.ByRows, false);
             }
         }
 
