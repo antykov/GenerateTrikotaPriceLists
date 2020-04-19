@@ -184,7 +184,9 @@ namespace GenerateTrikotaPriceLists
             public bool isExportByContract { get; set; }
             public bool isExportBySpecialConditionsProducts { get; set; }
             public bool isExportByProductMatrix { get; set; }
-            
+
+            public List<string> firms;
+
             public int groupDepth { get; set; }
 
             public string companyCodeForMatrixFilter { get; set; }
@@ -223,6 +225,7 @@ namespace GenerateTrikotaPriceLists
                     isAppendClientCodeExcel = StrToBoolDef(values[i++], false);
                     companyCodeForMatrixFilter = values[i++];
                     storehouseCodeForMatrixFilter = values[i++];
+                    firms = values[i++].Split(';').Where(w => !String.IsNullOrWhiteSpace(w)).ToList<string>();
                     isExportToXML = StrToBoolDef(values[i++], false);
                     isExportToEXCEL = StrToBoolDef(values[i++], false);
                     exportToEXCELVariant = StrToIntDef(values[i++], 1);
@@ -245,6 +248,7 @@ namespace GenerateTrikotaPriceLists
         }
 
         public static Dictionary<string, string> constants;
+        public static List<Tuple<string, string, string>> productsByFirms;
         public static List<Product> products;
         public static List<Product> allMatrixProducts;
         public static List<ProductGroup> productGroups = new List<ProductGroup>();
@@ -339,6 +343,32 @@ namespace GenerateTrikotaPriceLists
                         continue;
 
                     products.Add(new Product(line));
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public static void LoadProductsByFirms(string path)
+        {
+            logger.Trace("Загрузка остатков номенклатуры по фирмам...");
+
+            productsByFirms = new List<Tuple<string, string, string>>();
+
+            try
+            {
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
+                {
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    var items = line.Split(';').ToArray();
+
+                    productsByFirms.Add(new Tuple<string, string, string>(items[0], items[1], items[2]));
                 }
             }
             catch
@@ -486,12 +516,25 @@ namespace GenerateTrikotaPriceLists
             {
                 logger.Trace($"Подготовка данных для {client.clientDescription}...");
 
+                List<Product> productsForExport;
+                if (client.firms.Count == 1) {
+                    Dictionary<string, string> productsByFirm = productsByFirms
+                        .Where(w => w.Item1 == client.firms[0])
+                        .ToDictionary(k => k.Item2, v => v.Item3);
+                    productsForExport = products
+                        .Where(w => productsByFirm.ContainsKey(w.code))
+                        .ToList<Product>();
+                    productsForExport.All(p => { p.quantity = productsByFirm[p.code]; return true; });
+                }
+                else
+                    productsForExport = products;
+
                 List<Product> clientProductsXml, clientProductsExcel;
                 List<ProductGroup> clientProductGroupsXml, clientProductGroupsExcel;
 
                 if (client.isExportToXML)
                 {
-                    clientProductsXml = products.Select(s => (Product)s.Clone()).ToList<Product>();
+                    clientProductsXml = productsForExport.Select(s => (Product)s.Clone()).ToList<Product>();
                     if (client.isExportByProductMatrix)
                     {
                         foreach (Product p in allMatrixProducts)
@@ -525,7 +568,7 @@ namespace GenerateTrikotaPriceLists
                 // и отсутствует номенклатура, не входящая в какую-либо группу
                 if (client.isExportToEXCEL)
                 {
-                    clientProductsExcel = products.Select(s => (Product)s.Clone()).ToList<Product>();
+                    clientProductsExcel = productsForExport.Select(s => (Product)s.Clone()).ToList<Product>();
                     clientProductsExcel.All(p => { p.price = GetPrice(client, p); return true; });
                     clientProductGroupsExcel = productGroups.Select(s => (ProductGroup)s.Clone()).ToList<ProductGroup>();
 

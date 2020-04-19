@@ -19,6 +19,7 @@ namespace GenerateTrikotaPriceLists
                 LoadMatrix(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_ТоварнаяМатрица.txt"));
                 LoadAllMatrixProducts(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_НоменклатураТоварнойМатрицы.txt"));
                 LoadProducts(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_Остатки.txt"));
+                LoadProductsByFirms(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_ОстаткиПоФирмам.txt"));
                 LoadProductPrices(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_Цены.txt"));
                 LoadClients(Path.Combine(Environment.CurrentDirectory, "ВыгрузкаПрайсЛистов_Контрагенты.txt"));
 
