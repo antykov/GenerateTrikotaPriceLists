@@ -39,6 +39,8 @@ namespace GenerateTrikotaPriceLists
                 workbook = excelApplication.Workbooks.Create(new string[] { "Прайс-лист" });
                 worksheet = workbook.Worksheets[0];
 
+                worksheet.PageSetup.IsSummaryRowBelow = false;
+
                 columnsCount = 6;
                 if (client.exportToEXCELVariant == 1)
                 {

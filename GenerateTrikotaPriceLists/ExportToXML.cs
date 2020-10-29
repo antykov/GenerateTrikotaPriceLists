@@ -24,6 +24,11 @@ namespace GenerateTrikotaPriceLists
 
             try
             {
+                List<RetailRest> clientRetailRests = null;
+                if (!String.IsNullOrWhiteSpace(client.storehouseCodeForMatrixFilter))
+                    clientRetailRests = retailRests.Where(w => w.storeCode == client.storehouseCodeForMatrixFilter).ToList<RetailRest>();
+                bool useRetailRests = (clientRetailRests?.Count ?? 0) > 0 ? true : false;
+
                 XmlWriterSettings xmlSettings = new XmlWriterSettings();
                 xmlSettings.Encoding = Encoding.GetEncoding(1251);
                 xmlSettings.Indent = true;
@@ -48,9 +53,9 @@ namespace GenerateTrikotaPriceLists
                     }
 
                     WriteCurrencies(writer);
-                    WriteFields(writer, client);
+                    WriteFields(writer, client, useRetailRests);
                     WriteGroups(writer, clientProductGroups);
-                    WriteData(writer, client, clientProducts);
+                    WriteData(writer, client, clientProducts, useRetailRests, clientRetailRests);
 
                     writer.WriteEndElement();
 
@@ -77,7 +82,7 @@ namespace GenerateTrikotaPriceLists
             writer.WriteEndElement();
         }
 
-        public static void WriteFields(XmlWriter writer, Client client)
+        public static void WriteFields(XmlWriter writer, Client client, bool useRetailRests)
         {
             writer.WriteStartElement("fields");
 
@@ -160,6 +165,25 @@ namespace GenerateTrikotaPriceLists
                 writer.WriteEndElement();
             }
 
+            if (useRetailRests)
+            {
+                writer.WriteStartElement("field");
+                WriteXmlValue(writer, "name", "retailRest");
+                WriteXmlValue(writer, "description", "Остаток (розница)");
+                WriteXmlValue(writer, "type", "string");
+                WriteXmlValue(writer, "length", "30");
+                WriteXmlValue(writer, "align", "1");
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("field");
+                WriteXmlValue(writer, "name", "recommendOrder");
+                WriteXmlValue(writer, "description", "Заказ рекомендуемый");
+                WriteXmlValue(writer, "type", "string");
+                WriteXmlValue(writer, "length", "30");
+                WriteXmlValue(writer, "align", "1");
+                writer.WriteEndElement();
+            }
+
             writer.WriteEndElement();
         }
 
@@ -181,7 +205,7 @@ namespace GenerateTrikotaPriceLists
             writer.WriteEndElement();
         }
 
-        public static void WriteData(XmlWriter writer, Client client, List<Product> clientProducts)
+        public static void WriteData(XmlWriter writer, Client client, List<Product> clientProducts, bool useRetailRests, List<RetailRest>clientRetailRests)
         {
             writer.WriteStartElement("data");
 
@@ -198,8 +222,35 @@ namespace GenerateTrikotaPriceLists
                 WriteXmlValue(writer, "price", product.price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
                 WriteXmlValue(writer, "currency", "643");
                 if (client.isExportByProductMatrix)
-                    WriteXmlValue(writer, "recommendQuantity", product.recommendQuantity);
+                    WriteXmlValue(writer, "recommendQuantity", product.recommendQuantityString);
                 WriteXmlValue(writer, "level", product.level);
+                if (useRetailRests)
+                {
+                    RetailRest retailRest = clientRetailRests.Where(w => w.productCode == product.code).FirstOrDefault();
+
+                    if ((retailRest?.rest ?? 0) == 0)
+                        WriteXmlValue(writer, "retailRest", "--");
+                    else
+                        WriteXmlValue(writer, "retailRest", $"{retailRest.rest.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} {retailRest.unit}");
+
+                    if (retailRest == null)
+                        WriteXmlValue(writer, "recommendOrder", $"{product.recommendQuantity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} {product.unit}");
+                    else if (retailRest != null && retailRest.coefficient == 0)
+                        WriteXmlValue(writer, "recommendOrder", "??");
+                    else
+                    {
+                        decimal restInProductUnit = 0;
+                        if (retailRest.coefficient > 0)
+                            restInProductUnit = retailRest.rest * retailRest.coefficient;
+                        else
+                            restInProductUnit = retailRest.rest / -retailRest.coefficient;
+                        decimal recommendOrder = product.recommendQuantity - restInProductUnit;
+                        if (recommendOrder <= 0)
+                            WriteXmlValue(writer, "recommendOrder", "--");
+                        else
+                            WriteXmlValue(writer, "recommendOrder", $"{recommendOrder.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} {product.unit}");
+                    }
+                }
                 writer.WriteEndElement();
             }
 

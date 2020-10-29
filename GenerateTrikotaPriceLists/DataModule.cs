@@ -50,9 +50,10 @@ namespace GenerateTrikotaPriceLists
             public string companyCode { get; set; }
             public string storehouseCode { get; set; }
             public string productCode { get; set; }
-            public string recommendQuantity { get; set; }
+            public string recommendQuantityString { get; set; }
+            public decimal recommendQuantity { get; set; }
 
-            public ProductMatrixElement() { recommendQuantity = ""; }
+            public ProductMatrixElement() { recommendQuantityString = ""; }
             public ProductMatrixElement(string line)
             {
                 try
@@ -62,7 +63,8 @@ namespace GenerateTrikotaPriceLists
                     companyCode = values[0];
                     storehouseCode = values[1];
                     productCode = values[2];
-                    recommendQuantity = values[3];
+                    recommendQuantityString = values[3];
+                    recommendQuantity = StrToDecimalDef(values[3], 0);
                 }
                 catch (Exception exception)
                 {
@@ -82,7 +84,8 @@ namespace GenerateTrikotaPriceLists
             public string pack { get; set; }
             public string characteristicDescription { get; set; }
             public string quantity { get; set; }
-            public string recommendQuantity { get; set; }
+            public string recommendQuantityString { get; set; }
+            public decimal recommendQuantity { get; set; }
             public string level { get; set; }
             public decimal price { get; set; }
             public string brand { get; set; }
@@ -108,7 +111,8 @@ namespace GenerateTrikotaPriceLists
                     pack = values[i++];
                     characteristicDescription = values[i++];
                     quantity = values[i++];
-                    recommendQuantity = "";
+                    recommendQuantityString = "";
+                    recommendQuantity = 0;
 
                     level = "";
                     price = 0;
@@ -138,6 +142,7 @@ namespace GenerateTrikotaPriceLists
                     pack = this.pack,
                     characteristicDescription = this.characteristicDescription,
                     quantity = this.quantity,
+                    recommendQuantityString = this.recommendQuantityString,
                     recommendQuantity = this.recommendQuantity,
                     level = this.level,
                     price = this.price,
@@ -164,6 +169,35 @@ namespace GenerateTrikotaPriceLists
                 characteristicDescription = values[1];
                 priceTypeCode = values[2];
                 discount = StrToDecimalDef(values[3], 0);
+            }
+        }
+            
+        public class RetailRest
+        {
+            public string storeCode { get; set; }
+            public string productCode { get; set; }
+            public string unit { get; set; }
+            public decimal coefficient { get; set; }
+            public decimal rest { get; set; }
+
+            public RetailRest() { }
+
+            public RetailRest(string line)
+            {
+                try
+                {
+                    string[] values = line.Split(';');
+
+                    storeCode = values[0];
+                    productCode = values[1];
+                    unit = values[2];
+                    coefficient = StrToDecimalDef(values[3], 0);
+                    rest = StrToDecimalDef(values[4], 0);
+                }
+                catch (Exception exception)
+                {
+                    throw new Exception($"Некорректный файл с остатками номенклатуры в рознице:\n{exception.Message}");
+                }
             }
         }
 
@@ -253,6 +287,7 @@ namespace GenerateTrikotaPriceLists
         public static List<Product> allMatrixProducts;
         public static List<ProductGroup> productGroups = new List<ProductGroup>();
         public static List<ProductMatrixElement> productMatrix;
+        public static List<RetailRest> retailRests;
         public static Dictionary<string, Dictionary<string, decimal>> productPrices;
         public static List<Client> clients;
 
@@ -319,6 +354,30 @@ namespace GenerateTrikotaPriceLists
                         continue;
 
                     allMatrixProducts.Add(new Product(line));
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public static void LoadRetailRests(string path)
+        {
+            logger.Trace("Загрузка остатков номенклатуры в рознице...");
+
+            retailRests = new List<RetailRest>();
+
+            try
+            {
+                string[] lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+
+                foreach (string line in lines)
+                {
+                    if (String.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    retailRests.Add(new RetailRest(line));
                 }
             }
             catch
@@ -602,7 +661,8 @@ namespace GenerateTrikotaPriceLists
                       w.companyCode == client.companyCodeForMatrixFilter &&
                       w.storehouseCode == client.storehouseCodeForMatrixFilter &&
                       w.productCode == p.code).FirstOrDefault();
-                    p.recommendQuantity = matrixElement?.recommendQuantity ?? "";
+                    p.recommendQuantityString = matrixElement?.recommendQuantityString ?? "";
+                    p.recommendQuantity = matrixElement?.recommendQuantity ?? 0;
                     return true; });
             }
 
